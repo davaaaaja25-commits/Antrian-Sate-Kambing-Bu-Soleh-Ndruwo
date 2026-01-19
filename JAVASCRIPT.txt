@@ -1,0 +1,354 @@
+// Inisialisasi variabel global
+let currentQueueNumber = 101;
+let callHistory = [];
+let callCount = 0;
+let speechSynthesis = window.speechSynthesis;
+let isSpeaking = false;
+
+// Operator data
+const operators = [
+    { id: 1, name: "Operator 1", description: "Pendaftaran Umum", status: "active" },
+    { id: 2, name: "Operator 2", description: "Verifikasi Dokumen", status: "active" },
+    { id: 3, name: "Operator 3", description: "Tes Potensi Akademik", status: "busy" },
+    { id: 4, name: "Operator 4", description: "Wawancara", status: "active" },
+    { id: 5, name: "Operator 5", description: "Pembayaran", status: "active" },
+    { id: 6, name: "Operator 6", description: "Pengambilan Kartu", status: "active" },
+    { id: 7, name: "Operator 7", description: "Konsultasi Jurusan", status: "busy" },
+    { id: 8, name: "Operator 8", description: "Informasi Tambahan", status: "active" }
+];
+
+// DOM Elements
+const queueNumberInput = document.getElementById('queue-number');
+const operatorSelect = document.getElementById('operator');
+const callBtn = document.getElementById('call-btn');
+const resetBtn = document.getElementById('reset-btn');
+const testVoiceBtn = document.getElementById('test-voice-btn');
+const decreaseQueueBtn = document.getElementById('decrease-queue');
+const increaseQueueBtn = document.getElementById('increase-queue');
+const volumeSlider = document.getElementById('volume');
+const volumeValue = document.getElementById('volume-value');
+const historyList = document.getElementById('history-list');
+const currentCallNumber = document.getElementById('current-call-number');
+const currentCallOperator = document.getElementById('current-call-operator');
+const currentCallTime = document.getElementById('current-call-time');
+const nextCallNumber = document.getElementById('next-call-number');
+const nextCallOperator = document.getElementById('next-call-operator');
+const queueCounter = document.getElementById('queue-counter');
+const callSound = document.getElementById('call-sound');
+
+// Inisialisasi aplikasi saat halaman dimuat
+document.addEventListener('DOMContentLoaded', function() {
+    initApp();
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+});
+
+// Fungsi inisialisasi aplikasi
+function initApp() {
+    // Set nilai awal
+    queueNumberInput.value = currentQueueNumber;
+    updateNextCallDisplay();
+    renderOperatorStatus();
+    
+    // Event listeners untuk tombol
+    callBtn.addEventListener('click', callQueue);
+    resetBtn.addEventListener('click', resetQueue);
+    testVoiceBtn.addEventListener('click', testVoice);
+    decreaseQueueBtn.addEventListener('click', () => changeQueueNumber(-1));
+    increaseQueueBtn.addEventListener('click', () => changeQueueNumber(1));
+    volumeSlider.addEventListener('input', updateVolume);
+    
+    // Event listener untuk input nomor antrian
+    queueNumberInput.addEventListener('change', function() {
+        const value = parseInt(this.value);
+        if (isNaN(value) || value < 1) {
+            this.value = currentQueueNumber;
+        } else {
+            currentQueueNumber = value;
+            updateNextCallDisplay();
+        }
+    });
+    
+    // Event listener untuk pilihan operator
+    operatorSelect.addEventListener('change', updateNextCallDisplay);
+    
+    // Set volume awal
+    updateVolume();
+}
+
+// Fungsi untuk memperbarui tanggal dan waktu
+function updateDateTime() {
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const dateString = now.toLocaleDateString('id-ID', options);
+    const timeString = now.toLocaleTimeString('id-ID');
+    
+    document.getElementById('current-date').textContent = dateString;
+    document.getElementById('current-time').textContent = timeString;
+}
+
+// Fungsi untuk mengubah nomor antrian
+function changeQueueNumber(change) {
+    currentQueueNumber += change;
+    if (currentQueueNumber < 1) currentQueueNumber = 1;
+    queueNumberInput.value = currentQueueNumber;
+    updateNextCallDisplay();
+}
+
+// Fungsi untuk memperbarui tampilan panggilan berikutnya
+function updateNextCallDisplay() {
+    nextCallNumber.textContent = currentQueueNumber;
+    nextCallOperator.textContent = operatorSelect.options[operatorSelect.selectedIndex].text;
+}
+
+// Fungsi untuk memperbarui volume suara
+function updateVolume() {
+    const volume = volumeSlider.value / 100;
+    volumeValue.textContent = `${volumeSlider.value}%`;
+    callSound.volume = volume;
+}
+
+// Fungsi untuk memanggil antrian
+function callQueue() {
+    // Ambil data antrian
+    const queueNumber = queueNumberInput.value;
+    const operator = operatorSelect.options[operatorSelect.selectedIndex].text;
+    const operatorValue = operatorSelect.value;
+    
+    // Waktu panggilan
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('id-ID');
+    
+    // Update tampilan panggilan saat ini
+    currentCallNumber.textContent = queueNumber;
+    currentCallOperator.textContent = operator;
+    currentCallTime.textContent = `Dipanggil pada ${timeString}`;
+    
+    // Tambahkan ke riwayat panggilan
+    addToHistory(queueNumber, operator, timeString);
+    
+    // Mainkan suara panggilan
+    playCallSound();
+    
+    // Ucapkan nomor antrian dan operator
+    speakQueue(queueNumber, operatorValue);
+    
+    // Update status operator (ubah menjadi sibuk)
+    updateOperatorStatus(operatorValue, 'busy');
+    
+    // Update counter
+    callCount++;
+    queueCounter.textContent = `Total Panggilan: ${callCount}`;
+    
+    // Auto increment nomor antrian untuk panggilan berikutnya
+    currentQueueNumber++;
+    queueNumberInput.value = currentQueueNumber;
+    updateNextCallDisplay();
+    
+    // Set timer untuk mengembalikan status operator ke aktif setelah 2 menit
+    setTimeout(() => {
+        updateOperatorStatus(operatorValue, 'active');
+    }, 120000); // 2 menit
+}
+
+// Fungsi untuk menambahkan panggilan ke riwayat
+function addToHistory(queueNumber, operator, time) {
+    // Tambahkan ke array riwayat
+    callHistory.unshift({
+        number: queueNumber,
+        operator: operator,
+        time: time
+    });
+    
+    // Batasi riwayat hingga 10 item
+    if (callHistory.length > 10) {
+        callHistory.pop();
+    }
+    
+    // Render riwayat
+    renderHistory();
+}
+
+// Fungsi untuk merender riwayat panggilan
+function renderHistory() {
+    if (callHistory.length === 0) {
+        historyList.innerHTML = '<p class="empty-history">Belum ada panggilan antrian</p>';
+        return;
+    }
+    
+    let historyHTML = '';
+    callHistory.forEach(item => {
+        historyHTML += `
+            <div class="history-item">
+                <div class="history-number">${item.number}</div>
+                <div class="history-operator">${item.operator}</div>
+                <div class="history-time">${item.time}</div>
+            </div>
+        `;
+    });
+    
+    historyList.innerHTML = historyHTML;
+}
+
+// Fungsi untuk memainkan suara panggilan
+function playCallSound() {
+    // Reset audio ke awal
+    callSound.currentTime = 0;
+    
+    // Mainkan suara
+    callSound.play().catch(error => {
+        console.log("Error playing sound:", error);
+    });
+}
+
+// Fungsi untuk mengucapkan panggilan antrian
+function speakQueue(queueNumber, operator) {
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+    }
+    
+    // Format teks untuk diucapkan
+    const text = `Nomor antrian ${queueNumber}, silakan menuju ${operator}. Terima kasih.`;
+    
+    // Buat objek SpeechSynthesisUtterance
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Atur properti suara
+    utterance.lang = 'id-ID';
+    utterance.rate = 0.9; // Kecepatan bicara
+    utterance.pitch = 1; // Nada suara
+    utterance.volume = volumeSlider.value / 100; // Volume
+    
+    // Cari suara wanita
+    const voices = speechSynthesis.getVoices();
+    const femaleVoice = voices.find(voice => 
+        voice.lang.includes('id') && voice.name.toLowerCase().includes('female')
+    ) || voices.find(voice => 
+        voice.lang.includes('id')
+    ) || voices[0];
+    
+    if (femaleVoice) {
+        utterance.voice = femaleVoice;
+    }
+    
+    // Event listeners untuk utterance
+    utterance.onstart = function() {
+        isSpeaking = true;
+        callBtn.disabled = true;
+        callBtn.innerHTML = '<i class="fas fa-microphone"></i> Sedang Mengucapkan...';
+    };
+    
+    utterance.onend = function() {
+        isSpeaking = false;
+        callBtn.disabled = false;
+        callBtn.innerHTML = '<i class="fas fa-bullhorn"></i> Panggil Antrian';
+    };
+    
+    utterance.onerror = function() {
+        isSpeaking = false;
+        callBtn.disabled = false;
+        callBtn.innerHTML = '<i class="fas fa-bullhorn"></i> Panggil Antrian';
+        console.error("Speech synthesis error");
+    };
+    
+    // Ucapkan teks
+    speechSynthesis.speak(utterance);
+}
+
+// Fungsi untuk menguji suara
+function testVoice() {
+    const testText = "Ini adalah suara uji coba untuk sistem antrian registrasi SMA Negeri 1 ANJAY.";
+    
+    if (isSpeaking) {
+        speechSynthesis.cancel();
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(testText);
+    utterance.lang = 'id-ID';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = volumeSlider.value / 100;
+    
+    // Cari suara wanita
+    const voices = speechSynthesis.getVoices();
+    const femaleVoice = voices.find(voice => 
+        voice.lang.includes('id') && voice.name.toLowerCase().includes('female')
+    ) || voices.find(voice => 
+        voice.lang.includes('id')
+    ) || voices[0];
+    
+    if (femaleVoice) {
+        utterance.voice = femaleVoice;
+    }
+    
+    // Tampilkan pesan
+    alert("Suara uji coba sedang diucapkan. Pastikan volume speaker Anda aktif.");
+    
+    // Ucapkan teks uji
+    speechSynthesis.speak(utterance);
+}
+
+// Fungsi untuk merender status operator
+function renderOperatorStatus() {
+    const operatorGrid = document.querySelector('.operator-grid');
+    let operatorHTML = '';
+    
+    operators.forEach(operator => {
+        operatorHTML += `
+            <div class="operator-card ${operator.status}">
+                <div class="operator-icon">
+                    <i class="fas fa-user-tie"></i>
+                </div>
+                <div class="operator-info">
+                    <div class="operator-name">${operator.name}</div>
+                    <div class="operator-description">${operator.description}</div>
+                    <div class="operator-status-indicator">
+                        ${operator.status === 'active' ? 'Tersedia' : 'Sedang Melayani'}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    operatorGrid.innerHTML = operatorHTML;
+}
+
+// Fungsi untuk memperbarui status operator
+function updateOperatorStatus(operatorName, status) {
+    // Cari operator berdasarkan nama
+    const operatorIndex = operators.findIndex(op => op.name === operatorName);
+    
+    if (operatorIndex !== -1) {
+        operators[operatorIndex].status = status;
+        renderOperatorStatus();
+    }
+}
+
+// Fungsi untuk mereset antrian
+function resetQueue() {
+    const confirmation = confirm("Apakah Anda yakin ingin mereset antrian? Nomor antrian akan kembali ke 101.");
+    
+    if (confirmation) {
+        currentQueueNumber = 101;
+        queueNumberInput.value = currentQueueNumber;
+        updateNextCallDisplay();
+        
+        // Reset tampilan panggilan saat ini
+        currentCallNumber.textContent = '-';
+        currentCallOperator.textContent = '-';
+        currentCallTime.textContent = '-';
+        
+        // Reset status semua operator menjadi aktif
+        operators.forEach(operator => {
+            operator.status = 'active';
+        });
+        renderOperatorStatus();
+        
+        alert("Antrian telah direset. Nomor antrian kembali ke 101.");
+    }
+}
+
+// Inisialisasi suara saat halaman dimuat
+window.speechSynthesis.onvoiceschanged = function() {
+    // Suara sudah siap
+};

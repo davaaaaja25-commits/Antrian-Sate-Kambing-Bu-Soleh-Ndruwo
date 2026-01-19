@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Antrian Registrasi - SMA N 1 ANJAY</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <div class="logo">
+                    <i class="fas fa-school"></i>
+                </div>
+                <div class="school-info">
+                    <h1>SMA NEGERI 1 ANJAY</h1>
+                    <p>Sistem Antrian Registrasi Siswa Baru</p>
+                </div>
+            </div>
+            <div class="datetime">
+                <div id="current-date"></div>
+                <div id="current-time"></div>
+            </div>
+        </header>
+
+        <main>
+            <div class="dashboard">
+                <div class="admin-panel">
+                    <h2><i class="fas fa-cogs"></i> Panel Admin</h2>
+                    
+                    <div class="control-section">
+                        <div class="control-group">
+                            <label for="queue-number"><i class="fas fa-hashtag"></i> Nomor Antrian Saat Ini</label>
+                            <div class="queue-display">
+                                <button class="queue-btn" id="decrease-queue"><i class="fas fa-minus"></i></button>
+                                <input type="number" id="queue-number" value="101" min="1">
+                                <button class="queue-btn" id="increase-queue"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="operator"><i class="fas fa-user-tie"></i> Operator Tujuan</label>
+                            <select id="operator">
+                                <option value="Operator 1">Operator 1 - Pendaftaran Umum</option>
+                                <option value="Operator 2">Operator 2 - Verifikasi Dokumen</option>
+                                <option value="Operator 3">Operator 3 - Tes Potensi Akademik</option>
+                                <option value="Operator 4">Operator 4 - Wawancara</option>
+                                <option value="Operator 5">Operator 5 - Pembayaran</option>
+                                <option value="Operator 6">Operator 6 - Pengambilan Kartu</option>
+                                <option value="Operator 7">Operator 7 - Konsultasi Jurusan</option>
+                                <option value="Operator 8">Operator 8 - Informasi Tambahan</option>
+                            </select>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button id="call-btn" class="btn-primary">
+                                <i class="fas fa-bullhorn"></i> Panggil Antrian
+                            </button>
+                            <button id="reset-btn" class="btn-secondary">
+                                <i class="fas fa-redo"></i> Reset Antrian
+                            </button>
+                            <button id="test-voice-btn" class="btn-test">
+                                <i class="fas fa-volume-up"></i> Tes Suara
+                            </button>
+                        </div>
+                        
+                        <div class="volume-control">
+                            <label for="volume"><i class="fas fa-volume-up"></i> Volume Suara</label>
+                            <input type="range" id="volume" min="0" max="100" value="70">
+                            <span id="volume-value">70%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="call-history">
+                        <h3><i class="fas fa-history"></i> Riwayat Panggilan</h3>
+                        <div id="history-list">
+                            <p class="empty-history">Belum ada panggilan antrian</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="display-panel">
+                    <h2><i class="fas fa-tv"></i> Tampilan Antrian</h2>
+                    
+                    <div class="current-call-display">
+                        <div class="call-label">Sedang Dipanggil</div>
+                        <div class="current-number" id="current-call-number">-</div>
+                        <div class="current-operator" id="current-call-operator">-</div>
+                        <div class="call-time" id="current-call-time">-</div>
+                    </div>
+                    
+                    <div class="next-call-display">
+                        <h3><i class="fas fa-forward"></i> Antrian Berikutnya</h3>
+                        <div class="next-number" id="next-call-number">102</div>
+                        <div class="next-operator" id="next-call-operator">Operator 1 - Pendaftaran Umum</div>
+                    </div>
+                    
+                    <div class="operator-status">
+                        <h3><i class="fas fa-users"></i> Status Operator</h3>
+                        <div class="operator-grid">
+                            <!-- Operator status akan diisi oleh JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="announcement">
+                <div class="announcement-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>Informasi Penting</h3>
+                </div>
+                <div class="announcement-content">
+                    <p>1. Silakan perhatikan nomor antrian dan operator tujuan yang dipanggil.</p>
+                    <p>2. Siapkan dokumen yang diperlukan sebelum mendatangi operator.</p>
+                    <p>3. Mohon menjaga ketertiban selama menunggu antrian.</p>
+                    <p>4. Jika ada pertanyaan, silakan menghubungi operator 8.</p>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>© 2023 SMA Negeri 1 ANJAY - Sistem Antrian Registrasi</p>
+            <p>Versi 1.0 | <span id="queue-counter">Total Panggilan: 0</span></p>
+        </footer>
+    </div>
+
+    <!-- Audio untuk suara panggilan -->
+    <audio id="call-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="script.js"></script>
+</body>
+</html>
